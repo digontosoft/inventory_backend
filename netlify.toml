@@ -2,6 +2,9 @@
   command   = "npm run build"
   functions = "netlify/functions"
 
+[functions]
+  node_bundler = "zisi"
+
 # Redirect all /api/v1/* traffic to the serverless function
 [[redirects]]
   from   = "/api/v1/*"
