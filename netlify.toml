@@ -3,7 +3,10 @@
   functions = "netlify/functions"
 
 [functions]
-  node_bundler = "zisi"
+  node_bundler = "esbuild"
+
+[functions."api"]
+  external_node_modules = ["pg", "pg-connection-string", "knex"]
 
 # Redirect all /api/v1/* traffic to the serverless function
 [[redirects]]
