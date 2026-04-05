@@ -1,0 +1,10 @@
+[build]
+  command   = "npm run build"
+  functions = "netlify/functions"
+
+# Redirect all /api/v1/* traffic to the serverless function
+[[redirects]]
+  from   = "/api/v1/*"
+  to     = "/.netlify/functions/api/api/v1/:splat"
+  status = 200
+  force  = true

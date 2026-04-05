@@ -16,5 +16,5 @@ module.exports = {
     directory: './db/migrations',
     tableName: 'knex_migrations',
   },
-  pool: { min: 2, max: 10 },
+  pool: { min: 0, max: 1, idleTimeoutMillis: 500 },
 };
