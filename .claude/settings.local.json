@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/register -H \"Content-Type: application/json\" -d '{\"\"\"\"name\"\"\"\":\"\"\"\"Rahim Uddin\"\"\"\",\"\"\"\"email\"\"\"\":\"\"\"\"rahim@stockbd.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"securePass123\"\"\"\",\"\"\"\"phone\"\"\"\":\"\"\"\"01712345678\"\"\"\",\"\"\"\"shopName\"\"\"\":\"\"\"\"Rahim General Store\"\"\"\"}')",
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/register -H \"Content-Type: application/json\" -d '{\"\"name\"\":\"\"Rahim Uddin\"\",\"\"email\"\":\"\"rahim@stockbd.com\"\",\"\"password\"\":\"\"securePass123\"\",\"\"phone\"\":\"\"01712345678\"\",\"\"shopName\"\":\"\"Rahim General Store\"\"}')",
+      "Bash(cmd /c \"taskkill /PID 8320 /F\")",
+      "Bash(curl -s -X POST http://localhost:5001/api/v1/auth/register -H \"Content-Type: application/json\" -d '{\"\"name\"\":\"\"Rahim Uddin\"\",\"\"email\"\":\"\"rahim@stockbd.com\"\",\"\"password\"\":\"\"securePass123\"\",\"\"phone\"\":\"\"01712345678\"\",\"\"shopName\"\":\"\"Rahim General Store\"\"}')"
+    ]
+  }
+}
