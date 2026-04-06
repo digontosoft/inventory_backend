@@ -12,17 +12,9 @@ const app  = express();
 const PORT = process.env.PORT || 5000;
 
 // ─── Security & Parsing ───────────────────────────────────────────────────────
-app.use(helmet());
-app.use(cors({
-  origin: (origin, cb) => {
-    // Allow requests with no origin (curl, Postman, server-to-server)
-    // and any Netlify subdomain or localhost
-    if (!origin) return cb(null, true);
-    if (/\.netlify\.app$/.test(origin) || /^http:\/\/localhost/.test(origin)) return cb(null, true);
-    cb(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-}));
+app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(cors());           // sets Access-Control-Allow-Origin: * for all responses
+app.options('*', cors()); // respond to preflight before any route
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

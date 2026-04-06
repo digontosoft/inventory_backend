@@ -8,6 +8,14 @@
 [functions."api"]
   external_node_modules = ["pg", "pg-connection-string", "knex"]
 
+# CORS headers for all API responses (including preflight)
+[[headers]]
+  for = "/api/v1/*"
+  [headers.values]
+    Access-Control-Allow-Origin  = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, Accept"
+
 # Redirect all /api/v1/* traffic to the serverless function
 [[redirects]]
   from   = "/api/v1/*"
