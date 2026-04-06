@@ -2,25 +2,28 @@
   "name": "stockbd-api",
   "version": "1.0.0",
   "description": "StockBD Inventory Management SaaS API",
-  "main": "src/server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "build": "knex migrate:latest",
-    "migrate": "knex migrate:latest",
-    "migrate:rollback": "knex migrate:rollback",
-    "migrate:make": "knex migrate:make"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "build": "knex migrate:latest --knexfile config/knexfile.js",
+    "migrate": "knex migrate:latest --knexfile config/knexfile.js",
+    "migrate:rollback": "knex migrate:rollback --knexfile config/knexfile.js",
+    "migrate:make": "knex migrate:make --knexfile config/knexfile.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-async-handler": "^1.2.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "knex": "^3.1.0",
+    "morgan": "^1.10.1",
     "pg": "^8.11.3",
-    "serverless-http": "^4.0.0"
+    "serverless-http": "^4.0.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

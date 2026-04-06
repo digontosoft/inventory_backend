@@ -14,10 +14,7 @@ const signRefresh = (userId) => {
   return { token, jti };
 };
 
-const verifyAccess = (token) =>
-  jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-
-const verifyRefresh = (token) =>
-  jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+const verifyAccess  = (token) => jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+const verifyRefresh = (token) => jwt.verify(token, process.env.JWT_REFRESH_SECRET);
 
 module.exports = { signAccess, signRefresh, verifyAccess, verifyRefresh };
