@@ -279,8 +279,186 @@ const deleteProduct = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Product deleted' });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// SUPPLIERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const fmtSupplier = (s) => ({
+  id:             s.id,
+  name:           s.name,
+  phone:          s.phone,
+  email:          s.email          || '',
+  address:        s.address        || '',
+  paymentTerms:   s.payment_terms  || 'Cash',
+  openingBalance: parseFloat(s.opening_balance)  || 0,
+  totalPurchases: parseFloat(s.total_purchases)  || 0,
+  dueBalance:     parseFloat(s.due_balance)      || 0,
+  status:         s.status         || 'active',
+  createdAt:      s.created_at,
+});
+
+// GET /suppliers
+const getSuppliers = asyncHandler(async (req, res) => {
+  const { search, status } = req.query;
+  let q = db('suppliers').where({ shop_id: req.shopId }).whereNull('deleted_at');
+  if (search) q = q.where((b) => b.whereILike('name', `%${search}%`).orWhereILike('phone', `%${search}%`));
+  if (status && status !== 'all') q = q.where({ status });
+  const rows = await q.orderBy('name');
+  res.json({ success: true, data: rows.map(fmtSupplier) });
+});
+
+// POST /suppliers
+const createSupplier = asyncHandler(async (req, res) => {
+  const { name, phone, email, address, paymentTerms, openingBalance, status } = req.body;
+  if (!name || !phone) return res.status(400).json({ success: false, error: 'name and phone are required' });
+
+  const [s] = await db('suppliers')
+    .insert({
+      shop_id:         req.shopId,
+      name,
+      phone,
+      email:           email           || null,
+      address:         address         || null,
+      payment_terms:   paymentTerms    || 'Cash',
+      opening_balance: openingBalance  ?? 0,
+      total_purchases: 0,
+      due_balance:     openingBalance  ?? 0,
+      status:          status          || 'active',
+    })
+    .returning('*');
+
+  res.status(201).json({ success: true, data: fmtSupplier(s) });
+});
+
+// PUT /suppliers/:id
+const updateSupplier = asyncHandler(async (req, res) => {
+  const { name, phone, email, address, paymentTerms, openingBalance, status } = req.body;
+  if (!name || !phone) return res.status(400).json({ success: false, error: 'name and phone are required' });
+
+  const [s] = await db('suppliers')
+    .where({ id: req.params.id, shop_id: req.shopId })
+    .whereNull('deleted_at')
+    .update({
+      name,
+      phone,
+      email:           email           || null,
+      address:         address         || null,
+      payment_terms:   paymentTerms    || 'Cash',
+      opening_balance: openingBalance  ?? 0,
+      status:          status          || 'active',
+      updated_at:      db.fn.now(),
+    })
+    .returning('*');
+
+  if (!s) return res.status(404).json({ success: false, error: 'Supplier not found' });
+  res.json({ success: true, data: fmtSupplier(s) });
+});
+
+// DELETE /suppliers/:id
+const deleteSupplier = asyncHandler(async (req, res) => {
+  const count = await db('suppliers')
+    .where({ id: req.params.id, shop_id: req.shopId })
+    .whereNull('deleted_at')
+    .update({ deleted_at: db.fn.now() });
+
+  if (!count) return res.status(404).json({ success: false, error: 'Supplier not found' });
+  res.json({ success: true, message: 'Supplier deleted' });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CUSTOMERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const fmtCustomer = (c) => ({
+  id:             c.id,
+  name:           c.name,
+  phone:          c.phone,
+  type:           c.type           || 'Retail',
+  address:        c.address        || '',
+  customPrice:    Boolean(c.custom_price),
+  creditLimit:    parseFloat(c.credit_limit)     || 0,
+  openingBalance: parseFloat(c.opening_balance)  || 0,
+  totalSales:     parseFloat(c.total_sales)      || 0,
+  dueBalance:     parseFloat(c.due_balance)      || 0,
+  status:         c.status         || 'active',
+  createdAt:      c.created_at,
+});
+
+// GET /customers
+const getCustomers = asyncHandler(async (req, res) => {
+  const { search, type, status } = req.query;
+  let q = db('customers').where({ shop_id: req.shopId }).whereNull('deleted_at');
+  if (search) q = q.where((b) => b.whereILike('name', `%${search}%`).orWhereILike('phone', `%${search}%`));
+  if (type   && type   !== 'all') q = q.where({ type });
+  if (status && status !== 'all') q = q.where({ status });
+  const rows = await q.orderBy('name');
+  res.json({ success: true, data: rows.map(fmtCustomer) });
+});
+
+// POST /customers
+const createCustomer = asyncHandler(async (req, res) => {
+  const { name, phone, type, address, customPrice, creditLimit, openingBalance, status } = req.body;
+  if (!name || !phone) return res.status(400).json({ success: false, error: 'name and phone are required' });
+
+  const [c] = await db('customers')
+    .insert({
+      shop_id:         req.shopId,
+      name,
+      phone,
+      type:            type            || 'Retail',
+      address:         address         || null,
+      custom_price:    customPrice     ?? false,
+      credit_limit:    creditLimit     ?? 0,
+      opening_balance: openingBalance  ?? 0,
+      total_sales:     0,
+      due_balance:     openingBalance  ?? 0,
+      status:          status          || 'active',
+    })
+    .returning('*');
+
+  res.status(201).json({ success: true, data: fmtCustomer(c) });
+});
+
+// PUT /customers/:id
+const updateCustomer = asyncHandler(async (req, res) => {
+  const { name, phone, type, address, customPrice, creditLimit, openingBalance, status } = req.body;
+  if (!name || !phone) return res.status(400).json({ success: false, error: 'name and phone are required' });
+
+  const [c] = await db('customers')
+    .where({ id: req.params.id, shop_id: req.shopId })
+    .whereNull('deleted_at')
+    .update({
+      name,
+      phone,
+      type:            type            || 'Retail',
+      address:         address         || null,
+      custom_price:    customPrice     ?? false,
+      credit_limit:    creditLimit     ?? 0,
+      opening_balance: openingBalance  ?? 0,
+      status:          status          || 'active',
+      updated_at:      db.fn.now(),
+    })
+    .returning('*');
+
+  if (!c) return res.status(404).json({ success: false, error: 'Customer not found' });
+  res.json({ success: true, data: fmtCustomer(c) });
+});
+
+// DELETE /customers/:id
+const deleteCustomer = asyncHandler(async (req, res) => {
+  const count = await db('customers')
+    .where({ id: req.params.id, shop_id: req.shopId })
+    .whereNull('deleted_at')
+    .update({ deleted_at: db.fn.now() });
+
+  if (!count) return res.status(404).json({ success: false, error: 'Customer not found' });
+  res.json({ success: true, message: 'Customer deleted' });
+});
+
 module.exports = {
   getUnits, createUnit, updateUnit, deleteUnit,
   getCategories, createCategory, updateCategory, deleteCategory,
   getProducts, createProduct, updateProduct, deleteProduct,
+  getSuppliers, createSupplier, updateSupplier, deleteSupplier,
+  getCustomers, createCustomer, updateCustomer, deleteCustomer,
 };
