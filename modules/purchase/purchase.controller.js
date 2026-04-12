@@ -40,10 +40,9 @@ const fmtPurchase = (p, items = []) => ({
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function nextInvoiceNo(shopId) {
-  const row = await db('purchases')
+  const [row] = await db('purchases')
     .where({ shop_id: shopId })
-    .max(db.raw("CAST(REGEXP_REPLACE(invoice_no, '[^0-9]', '', 'g') AS INTEGER) as max_num"))
-    .first();
+    .select(db.raw("MAX(CAST(REGEXP_REPLACE(invoice_no, '[^0-9]', '', 'g') AS INTEGER)) as max_num"));
   const next = (parseInt(row?.max_num, 10) || 0) + 1;
   return `PUR-${String(next).padStart(4, '0')}`;
 }
