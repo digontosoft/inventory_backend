@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const db           = require('../../config/db');
+const { getDefaultLocation, setLocationStock } = require('./locationStockHelper');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ function fmtCount(c, items = []) {
     categoryFilter:     c.category_filter || '',
     date:               c.date,
     status:             c.status,
+    locationId:         c.location_id || null,
     totalSystemValue:   parseFloat(c.total_system_value)   || 0,
     totalCountedValue:  parseFloat(c.total_counted_value)  || 0,
     totalVarianceValue: parseFloat(c.total_variance_value) || 0,
@@ -76,7 +78,7 @@ const getStockCount = asyncHandler(async (req, res) => {
 // ─── POST /stock-counts ───────────────────────────────────────────────────────
 
 const createStockCount = asyncHandler(async (req, res) => {
-  const { title, date, type, categoryFilter, notes, items } = req.body;
+  const { title, date, type, categoryFilter, notes, items, locationId } = req.body;
 
   if (!title) return res.status(400).json({ success: false, error: 'Title is required' });
   if (!items || items.length === 0) return res.status(400).json({ success: false, error: 'At least one product required' });
@@ -85,6 +87,12 @@ const createStockCount = asyncHandler(async (req, res) => {
   const totalSystemValue = items.reduce((s, i) => s + (parseFloat(i.systemQty) || 0) * (parseFloat(i.unitCost) || 0), 0);
 
   const result = await db.transaction(async (trx) => {
+    let locId = locationId || null;
+    if (!locId) {
+      const defaultLoc = await getDefaultLocation(trx, req.shopId);
+      locId = defaultLoc.id;
+    }
+
     const [count] = await trx('stock_counts').insert({
       shop_id:              req.shopId,
       count_no:             countNo,
@@ -93,6 +101,7 @@ const createStockCount = asyncHandler(async (req, res) => {
       category_filter:      categoryFilter || null,
       date:                 date   || new Date().toISOString().split('T')[0],
       status:               'in_progress',
+      location_id:          locId,
       total_system_value:   totalSystemValue,
       total_counted_value:  0,
       total_variance_value: 0,
@@ -163,6 +172,9 @@ const updateStockCount = asyncHandler(async (req, res) => {
     };
 
     if (complete) {
+      const defaultLoc = await getDefaultLocation(trx, req.shopId);
+      const locId = count.location_id || defaultLoc.id;
+
       // Apply stock changes and log movements
       for (const item of items) {
         if (item.countedQty === null) continue;
@@ -173,7 +185,11 @@ const updateStockCount = asyncHandler(async (req, res) => {
         if (!product) continue;
 
         const qtyBefore = parseFloat(product.stock) || 0;
-        await trx('products').where({ id: item.productId }).update({ stock: parseFloat(item.countedQty) });
+
+        // Set location-specific stock and sync total
+        await setLocationStock(trx, { productId: item.productId, locationId: locId, shopId: req.shopId, qty: parseFloat(item.countedQty) });
+
+        const updatedProd = await trx('products').where({ id: item.productId }).select('stock').first();
 
         await trx('stock_movements').insert({
           shop_id:         req.shopId,
@@ -188,10 +204,10 @@ const updateStockCount = asyncHandler(async (req, res) => {
           reference_no:    count.count_no,
           qty_before:      qtyBefore,
           qty_change:      diff,
-          qty_after:       parseFloat(item.countedQty),
+          qty_after:       parseFloat(updatedProd?.stock ?? item.countedQty),
           unit_cost:       parseFloat(item.unitCost) || 0,
           total_value:     Math.abs(diff) * (parseFloat(item.unitCost) || 0),
-          location:        'Main Store',
+          location_id:     locId,
           notes:           'Stock count adjustment',
           created_by_name: user?.name || '',
         });

@@ -8,6 +8,9 @@ const {
   getSuppliers, createSupplier, updateSupplier, deleteSupplier,
   getCustomers, createCustomer, updateCustomer, deleteCustomer,
 } = require('./masterdata.controller');
+const {
+  getLocations, getLocation, createLocation, updateLocation, setDefaultLocation, deleteLocation, getLocationStock,
+} = require('./locations.controller');
 
 router.use(authenticate);
 
@@ -30,5 +33,11 @@ router.route('/suppliers/:id').put(updateSupplier).delete(deleteSupplier);
 // Customers
 router.route('/customers').get(getCustomers).post(createCustomer);
 router.route('/customers/:id').put(updateCustomer).delete(deleteCustomer);
+
+// Locations
+router.route('/locations').get(getLocations).post(createLocation);
+router.route('/locations/:id').get(getLocation).put(updateLocation).delete(deleteLocation);
+router.put('/locations/:id/set-default', setDefaultLocation);
+router.get('/locations/:id/stock', getLocationStock);
 
 module.exports = router;

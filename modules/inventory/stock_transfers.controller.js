@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const db           = require('../../config/db');
+const { getDefaultLocation, incrementLocationStock, getLocationStock } = require('./locationStockHelper');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -26,26 +27,33 @@ function fmtItem(i) {
 
 function fmtTransfer(t, items = []) {
   return {
-    id:            t.id,
-    transferNo:    t.transfer_no,
-    date:          t.date,
-    expectedDate:  t.expected_date || '',
-    fromBranch:    t.from_branch,
-    toBranch:      t.to_branch,
-    totalItems:    t.total_items   || 0,
-    status:        t.status,
-    dispatchedAt:  t.dispatched_at || '',
-    receivedAt:    t.received_at   || '',
-    notes:         t.notes         || '',
-    createdBy:     t.created_by_name || '',
-    createdAt:     t.created_at,
-    items:         items.map(fmtItem),
+    id:             t.id,
+    transferNo:     t.transfer_no,
+    date:           t.date,
+    expectedDate:   t.expected_date    || '',
+    fromBranch:     t.from_branch      || '',
+    toBranch:       t.to_branch        || '',
+    fromLocationId: t.from_location_id || null,
+    toLocationId:   t.to_location_id   || null,
+    totalItems:     t.total_items      || 0,
+    status:         t.status,
+    dispatchedAt:   t.dispatched_at    || '',
+    receivedAt:     t.received_at      || '',
+    notes:          t.notes            || '',
+    createdBy:      t.created_by_name  || '',
+    createdAt:      t.created_at,
+    items:          items.map(fmtItem),
   };
 }
 
-async function logMovement(trx, { shopId, product, type, referenceType, referenceId, referenceNo, qtyChange, location, notes, createdByName }) {
+async function logTransferMovement(trx, { shopId, product, type, referenceId, referenceNo, qtyChange, locationId, notes, createdByName }) {
   const qtyBefore = parseFloat(product.stock) || 0;
-  const qtyAfter  = qtyBefore + qtyChange;
+
+  await incrementLocationStock(trx, { productId: product.id, locationId, shopId, delta: qtyChange });
+
+  // after increment, fetch updated total from products
+  const updated = await trx('products').where({ id: product.id }).select('stock').first();
+  const qtyAfter = parseFloat(updated?.stock) || 0;
 
   await trx('stock_movements').insert({
     shop_id:         shopId,
@@ -55,7 +63,7 @@ async function logMovement(trx, { shopId, product, type, referenceType, referenc
     product_name:    product.name,
     sku:             product.sku || '',
     type,
-    reference_type:  referenceType,
+    reference_type:  'transfer',
     reference_id:    referenceId,
     reference_no:    referenceNo,
     qty_before:      qtyBefore,
@@ -63,12 +71,10 @@ async function logMovement(trx, { shopId, product, type, referenceType, referenc
     qty_after:       qtyAfter,
     unit_cost:       parseFloat(product.purchase_price) || 0,
     total_value:     Math.abs(qtyChange) * (parseFloat(product.purchase_price) || 0),
-    location,
+    location_id:     locationId,
     notes,
     created_by_name: createdByName,
   });
-
-  await trx('products').where({ id: product.id }).update({ stock: qtyAfter });
 }
 
 // ─── GET /stock-transfers ─────────────────────────────────────────────────────
@@ -97,9 +103,8 @@ const getStockTransfer = asyncHandler(async (req, res) => {
 // ─── POST /stock-transfers ────────────────────────────────────────────────────
 
 const createStockTransfer = asyncHandler(async (req, res) => {
-  const { date, expectedDate, fromBranch, toBranch, notes, items, dispatch } = req.body;
+  const { date, expectedDate, fromLocationId, toLocationId, fromBranch, toBranch, notes, items, dispatch } = req.body;
 
-  if (!toBranch) return res.status(400).json({ success: false, error: 'Destination branch required' });
   if (!items || items.length === 0) return res.status(400).json({ success: false, error: 'At least one item required' });
 
   const trfNo = await nextTransferNo(req.shopId);
@@ -107,19 +112,30 @@ const createStockTransfer = asyncHandler(async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
 
   const result = await db.transaction(async (trx) => {
+    // resolve locations
+    const defaultLoc = await getDefaultLocation(trx, req.shopId);
+    const fromLocId  = fromLocationId || defaultLoc.id;
+    const toLocId    = toLocationId   || defaultLoc.id;
+
+    // get location names for display
+    const fromLoc = await trx('locations').where({ id: fromLocId }).select('name').first();
+    const toLoc   = await trx('locations').where({ id: toLocId   }).select('name').first();
+
     const [transfer] = await trx('stock_transfers').insert({
-      shop_id:         req.shopId,
-      transfer_no:     trfNo,
-      date:            date         || today,
-      expected_date:   expectedDate || null,
-      from_branch:     fromBranch   || 'Main Store',
-      to_branch:       toBranch,
-      total_items:     items.length,
-      status:          dispatch ? 'dispatched' : 'draft',
-      dispatched_at:   dispatch ? today : null,
-      notes:           notes || null,
-      created_by:      req.user.id,
-      created_by_name: user?.name || '',
+      shop_id:          req.shopId,
+      transfer_no:      trfNo,
+      date:             date         || today,
+      expected_date:    expectedDate || null,
+      from_branch:      fromBranch   || fromLoc?.name || 'Main Warehouse',
+      to_branch:        toBranch     || toLoc?.name   || 'Main Warehouse',
+      from_location_id: fromLocId,
+      to_location_id:   toLocId,
+      total_items:      items.length,
+      status:           dispatch ? 'dispatched' : 'draft',
+      dispatched_at:    dispatch ? today : null,
+      notes:            notes || null,
+      created_by:       req.user.id,
+      created_by_name:  user?.name || '',
     }).returning('*');
 
     const itemRows = items.map((i) => ({
@@ -139,16 +155,15 @@ const createStockTransfer = asyncHandler(async (req, res) => {
         const product = await trx('products').where({ id: item.productId, shop_id: req.shopId }).first();
         if (!product) continue;
 
-        await logMovement(trx, {
+        await logTransferMovement(trx, {
           shopId:        req.shopId,
           product,
           type:          'transfer_out',
-          referenceType: 'transfer',
           referenceId:   transfer.id,
           referenceNo:   trfNo,
           qtyChange:     -item.qtyRequested,
-          location:      fromBranch || 'Main Store',
-          notes:         `Transfer to ${toBranch}`,
+          locationId:    fromLocId,
+          notes:         `Transfer to ${toLoc?.name || toBranch}`,
           createdByName: user?.name || '',
         });
       }
@@ -173,6 +188,9 @@ const dispatchStockTransfer = asyncHandler(async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
 
   await db.transaction(async (trx) => {
+    const defaultLoc = await getDefaultLocation(trx, req.shopId);
+    const fromLocId  = transfer.from_location_id || defaultLoc.id;
+
     await trx('stock_transfers').where({ id: transfer.id }).update({ status: 'dispatched', dispatched_at: today });
     await trx('stock_transfer_items').where({ transfer_id: transfer.id }).update({ qty_sent: db.raw('qty_requested') });
 
@@ -180,22 +198,21 @@ const dispatchStockTransfer = asyncHandler(async (req, res) => {
       const product = await trx('products').where({ id: item.product_id, shop_id: req.shopId }).first();
       if (!product) continue;
 
-      await logMovement(trx, {
+      await logTransferMovement(trx, {
         shopId:        req.shopId,
         product,
         type:          'transfer_out',
-        referenceType: 'transfer',
         referenceId:   transfer.id,
         referenceNo:   transfer.transfer_no,
         qtyChange:     -parseFloat(item.qty_requested),
-        location:      transfer.from_branch,
+        locationId:    fromLocId,
         notes:         `Transfer to ${transfer.to_branch}`,
         createdByName: user?.name || '',
       });
     }
   });
 
-  const updated = await db('stock_transfers').where({ id: transfer.id }).first();
+  const updated      = await db('stock_transfers').where({ id: transfer.id }).first();
   const updatedItems = await db('stock_transfer_items').where({ transfer_id: transfer.id });
   res.json({ success: true, data: fmtTransfer(updated, updatedItems) });
 });
@@ -213,6 +230,9 @@ const receiveStockTransfer = asyncHandler(async (req, res) => {
   const today = new Date().toISOString().split('T')[0];
 
   await db.transaction(async (trx) => {
+    const defaultLoc = await getDefaultLocation(trx, req.shopId);
+    const toLocId    = transfer.to_location_id || defaultLoc.id;
+
     let allReceived = true;
 
     for (const item of items) {
@@ -228,22 +248,21 @@ const receiveStockTransfer = asyncHandler(async (req, res) => {
         const product = await trx('products').where({ id: item.product_id, shop_id: req.shopId }).first();
         if (!product) continue;
 
-        await logMovement(trx, {
+        await logTransferMovement(trx, {
           shopId:        req.shopId,
           product,
           type:          'transfer_in',
-          referenceType: 'transfer',
           referenceId:   transfer.id,
           referenceNo:   transfer.transfer_no,
           qtyChange:     received,
-          location:      transfer.to_branch,
+          locationId:    toLocId,
           notes:         `Transfer from ${transfer.from_branch}${receiveNotes ? `. ${receiveNotes}` : ''}`,
           createdByName: user?.name || '',
         });
       }
     }
 
-    const newStatus = allReceived ? 'received' : 'partial';
+    const newStatus    = allReceived ? 'received' : 'partial';
     const existingNotes = transfer.notes || '';
     await trx('stock_transfers').where({ id: transfer.id }).update({
       status:      newStatus,
@@ -252,7 +271,7 @@ const receiveStockTransfer = asyncHandler(async (req, res) => {
     });
   });
 
-  const updated = await db('stock_transfers').where({ id: transfer.id }).first();
+  const updated      = await db('stock_transfers').where({ id: transfer.id }).first();
   const updatedItems = await db('stock_transfer_items').where({ transfer_id: transfer.id });
   res.json({ success: true, data: fmtTransfer(updated, updatedItems) });
 });

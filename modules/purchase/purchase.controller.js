@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const db           = require('../../config/db');
+const { getDefaultLocation, incrementLocationStock } = require('../inventory/locationStockHelper');
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
@@ -134,10 +135,14 @@ const createPurchase = asyncHandler(async (req, res) => {
 
     // Update stock and supplier balance when confirmed
     if (status === 'received' || status === 'partial') {
+      const defaultLoc = await getDefaultLocation(trx, req.shopId);
       for (const item of items) {
-        await trx('products')
-          .where({ id: item.productId, shop_id: req.shopId })
-          .increment('stock', item.qty);
+        await incrementLocationStock(trx, {
+          productId:  item.productId,
+          locationId: defaultLoc.id,
+          shopId:     req.shopId,
+          delta:      item.qty,
+        });
       }
       await trx('suppliers')
         .where({ id: supplierId })
@@ -201,10 +206,14 @@ const updatePurchase = asyncHandler(async (req, res) => {
 
     // Update stock and supplier balance when confirming
     if (status === 'received' || status === 'partial') {
+      const defaultLoc = await getDefaultLocation(trx, req.shopId);
       for (const item of items) {
-        await trx('products')
-          .where({ id: item.productId, shop_id: req.shopId })
-          .increment('stock', item.qty);
+        await incrementLocationStock(trx, {
+          productId:  item.productId,
+          locationId: defaultLoc.id,
+          shopId:     req.shopId,
+          delta:      item.qty,
+        });
       }
       await trx('suppliers')
         .where({ id: supplierId })

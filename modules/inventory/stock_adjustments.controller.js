@@ -1,5 +1,6 @@
 const asyncHandler = require('express-async-handler');
 const db           = require('../../config/db');
+const { getDefaultLocation, setLocationStock, getLocationStock } = require('./locationStockHelper');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,7 @@ function fmtAdj(a, items = []) {
     totalValueImpact: parseFloat(a.total_value_impact) || 0,
     status:           a.status,
     notes:            a.notes          || '',
+    locationId:       a.location_id    || null,
     createdBy:        a.created_by,
     approvedBy:       a.approved_by    || null,
     createdAt:        a.created_at,
@@ -43,21 +45,29 @@ function fmtAdj(a, items = []) {
   };
 }
 
-async function applyApproval(trx, adj, items, userId, shopId) {
-  // For each item, update product stock and log a movement
+async function applyApproval(trx, adj, items, userId, shopId, locationId) {
+  const user = await trx('users').where({ id: userId }).select('name').first();
+
+  // resolve location if not provided
+  let locId = locationId || adj.location_id;
+  if (!locId) {
+    const defaultLoc = await getDefaultLocation(trx, shopId);
+    locId = defaultLoc.id;
+  }
+
   for (const item of items) {
     if (parseFloat(item.difference) === 0) continue;
 
     const product = await trx('products').where({ id: item.product_id, shop_id: shopId }).first();
     if (!product) continue;
 
-    const qtyBefore = parseFloat(product.stock) || 0;
-    const newStock  = parseFloat(item.adjusted_qty);
-    const diff      = parseFloat(item.difference);
+    const qtyBefore  = parseFloat(product.stock) || 0;
+    const newQty     = parseFloat(item.adjusted_qty);
+    const diff       = parseFloat(item.difference);
 
-    await trx('products').where({ id: item.product_id }).update({ stock: newStock });
+    // Update per-location stock and sync total
+    await setLocationStock(trx, { productId: item.product_id, locationId: locId, shopId, qty: newQty });
 
-    const user = await trx('users').where({ id: userId }).select('name').first();
     await trx('stock_movements').insert({
       shop_id:         shopId,
       date:            adj.date,
@@ -71,10 +81,10 @@ async function applyApproval(trx, adj, items, userId, shopId) {
       reference_no:    adj.adjustment_no,
       qty_before:      qtyBefore,
       qty_change:      diff,
-      qty_after:       newStock,
+      qty_after:       newQty,
       unit_cost:       parseFloat(item.unit_cost) || 0,
       total_value:     Math.abs(parseFloat(item.value_impact)) || 0,
-      location:        'Main Store',
+      location_id:     locId,
       notes:           adj.reason_note || '',
       created_by_name: user?.name || '',
     });
@@ -118,7 +128,7 @@ const getStockAdjustment = asyncHandler(async (req, res) => {
 // ─── POST /stock-adjustments ──────────────────────────────────────────────────
 
 const createStockAdjustment = asyncHandler(async (req, res) => {
-  const { date, reason, reasonNote, notes, items, status } = req.body;
+  const { date, reason, reasonNote, notes, items, status, locationId } = req.body;
 
   if (!items || items.length === 0) {
     return res.status(400).json({ success: false, error: 'At least one item required' });
@@ -132,6 +142,13 @@ const createStockAdjustment = asyncHandler(async (req, res) => {
   const totalImpact = items.reduce((s, i) => s + (parseFloat(i.valueImpact) || 0), 0);
 
   const result = await db.transaction(async (trx) => {
+    // resolve location
+    let locId = locationId || null;
+    if (!locId) {
+      const defaultLoc = await getDefaultLocation(trx, req.shopId);
+      locId = defaultLoc.id;
+    }
+
     const [adj] = await trx('stock_adjustments').insert({
       shop_id:            req.shopId,
       adjustment_no:      adjNo,
@@ -141,6 +158,7 @@ const createStockAdjustment = asyncHandler(async (req, res) => {
       total_value_impact: totalImpact,
       status:             approve ? 'approved' : 'draft',
       notes:              notes || null,
+      location_id:        locId,
       created_by:         req.user.id,
       approved_by:        approve ? req.user.id : null,
     }).returning('*');
@@ -161,7 +179,7 @@ const createStockAdjustment = asyncHandler(async (req, res) => {
 
     if (approve) {
       const inserted = await trx('stock_adjustment_items').where({ adjustment_id: adj.id });
-      await applyApproval(trx, adj, inserted, req.user.id, req.shopId);
+      await applyApproval(trx, adj, inserted, req.user.id, req.shopId, locId);
     }
 
     return adj;
