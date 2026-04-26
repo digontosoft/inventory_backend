@@ -30,6 +30,7 @@ const fmtProduct = (p) => ({
   vatRate:           parseFloat(p.vat_rate)        || 0,
   stock:             parseFloat(p.stock)           || 0,
   lowStockThreshold: parseFloat(p.low_stock_threshold) || 0,
+  image:             p.image || null,
   description:       p.description || '',
   status:            p.status || 'active',
   createdAt:         p.created_at,
@@ -205,7 +206,7 @@ const createProduct = asyncHandler(async (req, res) => {
   const {
     name, sku, barcode, categoryId, unitId,
     purchasePrice, sellingPrice, vatRate,
-    lowStockThreshold, description, status,
+    lowStockThreshold, description, status, image,
   } = req.body;
 
   if (!name || !sku || !categoryId || !unitId) {
@@ -224,6 +225,7 @@ const createProduct = asyncHandler(async (req, res) => {
       selling_price:       sellingPrice         ?? 0,
       vat_rate:            vatRate              ?? 0,
       low_stock_threshold: lowStockThreshold    ?? 0,
+      image:               image               || null,
       description:         description          || null,
       status:              status               || 'active',
       stock:               0,
@@ -238,7 +240,7 @@ const updateProduct = asyncHandler(async (req, res) => {
   const {
     name, sku, barcode, categoryId, unitId,
     purchasePrice, sellingPrice, vatRate,
-    lowStockThreshold, description, status,
+    lowStockThreshold, description, status, image,
   } = req.body;
 
   if (!name || !sku || !categoryId || !unitId) {
@@ -258,6 +260,7 @@ const updateProduct = asyncHandler(async (req, res) => {
       selling_price:       sellingPrice         ?? 0,
       vat_rate:            vatRate              ?? 0,
       low_stock_threshold: lowStockThreshold    ?? 0,
+      image:               image !== undefined ? (image || null) : db.raw('image'),
       description:         description          || null,
       status:              status               || 'active',
       updated_at:          db.fn.now(),

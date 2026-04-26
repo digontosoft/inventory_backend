@@ -1,5 +1,6 @@
 const { Router } = require('express');
 const authRoutes             = require('./auth/auth.route');
+const uploadsRoutes          = require('./uploads/uploads.routes');
 const masterdataRoutes       = require('./masterdata/masterdata.routes');
 const purchaseRoutes         = require('./purchase/purchase.routes');
 const purchaseReturnRoutes   = require('./purchase/purchase_returns.routes');
@@ -12,6 +13,7 @@ const reportsRoutes          = require('./reports/reports.routes');
 const router = Router();
 
 router.use(authRoutes);
+router.use(uploadsRoutes);
 router.use(masterdataRoutes);
 router.use(purchaseRoutes);
 router.use(purchaseReturnRoutes);
