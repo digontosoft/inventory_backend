@@ -8,7 +8,20 @@
       "Bash(curl -s -X POST http://localhost:5001/api/v1/auth/register -H \"Content-Type: application/json\" -d '{\"\"name\"\":\"\"Rahim Uddin\"\",\"\"email\"\":\"\"rahim@stockbd.com\"\",\"\"password\"\":\"\"securePass123\"\",\"\"phone\"\":\"\"01712345678\"\",\"\"shopName\"\":\"\"Rahim General Store\"\"}')",
       "Bash(curl -s -X POST https://inventoryos.netlify.app/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"\"email\"\":\"\"rahim@stockbd.com\"\",\"\"password\"\":\"\"securePass123\"\"}')",
       "Bash(node server.js)",
-      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"rahim@stockbd.com\",\"password\":\"securePass123\"}')"
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"rahim@stockbd.com\",\"password\":\"securePass123\"}')",
+      "Bash(npm run:*)",
+      "Bash(npx vite:*)",
+      "Bash(node -e \"require\\('./modules/masterdata/masterdata.controller.js'\\); console.log\\('OK'\\)\")",
+      "Bash(node -e \"require\\('./modules/index.js'\\); console.log\\('OK'\\)\")",
+      "Bash(npx tsc:*)",
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"test@example.com\\\\\",\\\\\"password\\\\\":\\\\\"password123\\\\\"}\")",
+      "Bash(node -e ':*)",
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"email\\\\\":\\\\\"rahim@stockbd.com\\\\\",\\\\\"password\\\\\":\\\\\"password123\\\\\"}\")",
+      "Bash(node -e \"const j=require\\('c:/tmp/login.json'\\); console.log\\('token:', j.data?.accessToken?.substring\\(0,40\\)\\); const t=j.data?.accessToken; const http=require\\('http'\\); const req=http.request\\({hostname:'localhost',port:5000,path:'/api/v1/units',headers:{Authorization:'Bearer '+t}},r=>{let d='';r.on\\('data',c=>d+=c\\);r.on\\('end',\\(\\)=>console.log\\('units:',d\\)\\)}\\); req.end\\(\\);\")",
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"rahim@stockbd.com\",\"password\":\"password123\"}')",
+      "Bash(curl -s -X POST http://localhost:5000/api/v1/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"test2@stockbd.com\",\"password\":\"password123\"}')",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 16260 //F)"
     ]
   }
 }

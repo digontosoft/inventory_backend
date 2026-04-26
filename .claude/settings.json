@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"require\\('./config/db'\\).raw\\('SELECT 1'\\).then\\(\\(\\) => console.log\\('DB OK'\\)\\).catch\\(e => console.log\\('DB Error:', e.message\\)\\)\")",
+      "Bash(node -e ' *)",
+      "Bash(node -e \"require\\('./modules/reports/reports.controller.js'\\); console.log\\('OK'\\)\")"
+    ]
+  }
+}

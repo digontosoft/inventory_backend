@@ -3,6 +3,7 @@ const authDocs       = require('./docs/auth.docs');
 const masterdataDocs = require('./docs/masterdata.docs');
 const purchaseDocs   = require('./docs/purchase.docs');
 const inventoryDocs  = require('./docs/inventory.docs');
+const financeDocs    = require('./docs/finance.docs');
 
 const swaggerDefinition = {
   openapi: '3.0.0',
@@ -24,30 +25,40 @@ const swaggerDefinition = {
         description:  'Enter your access token from /auth/login',
       },
     },
+    schemas: {
+      ...financeDocs.schemas,
+    },
   },
   security: [{ bearerAuth: [] }],
   tags: [
-    { name: 'Authentication',              description: 'Register, login, token refresh' },
-    { name: 'Master Data – Units',         description: 'Units of measure' },
-    { name: 'Master Data – Categories',    description: 'Product categories' },
-    { name: 'Master Data – Products',      description: 'Product catalogue' },
-    { name: 'Master Data – Suppliers',     description: 'Supplier accounts' },
-    { name: 'Master Data – Customers',     description: 'Customer accounts' },
-    { name: 'Master Data – Locations',     description: 'Warehouses / branches' },
-    { name: 'Purchase – Purchases',        description: 'Purchase orders and receiving' },
-    { name: 'Purchase – Returns',          description: 'Purchase return notes' },
-    { name: 'Purchase – Supplier Payments',description: 'Payments made to suppliers' },
-    { name: 'Inventory – Adjustments',     description: 'Manual stock corrections' },
-    { name: 'Inventory – Movements',       description: 'Read-only stock movement ledger' },
-    { name: 'Inventory – Transfers',       description: 'Inter-location stock transfers' },
-    { name: 'Inventory – Stock Counts',    description: 'Physical inventory counting' },
-    { name: 'Inventory – Expiry Tracking', description: 'Batch expiry dates and disposal' },
+    { name: 'Authentication',               description: 'Register, login, token refresh' },
+    { name: 'Master Data – Units',          description: 'Units of measure' },
+    { name: 'Master Data – Categories',     description: 'Product categories' },
+    { name: 'Master Data – Products',       description: 'Product catalogue' },
+    { name: 'Master Data – Suppliers',      description: 'Supplier accounts' },
+    { name: 'Master Data – Customers',      description: 'Customer accounts' },
+    { name: 'Master Data – Locations',      description: 'Warehouses / branches' },
+    { name: 'Purchase – Purchases',         description: 'Purchase orders and receiving' },
+    { name: 'Purchase – Returns',           description: 'Purchase return notes' },
+    { name: 'Purchase – Supplier Payments', description: 'Payments made to suppliers' },
+    { name: 'Inventory – Adjustments',      description: 'Manual stock corrections' },
+    { name: 'Inventory – Movements',        description: 'Read-only stock movement ledger' },
+    { name: 'Inventory – Transfers',        description: 'Inter-location stock transfers' },
+    { name: 'Inventory – Stock Counts',     description: 'Physical inventory counting' },
+    { name: 'Inventory – Expiry Tracking',  description: 'Batch expiry dates and disposal' },
+    { name: 'Finance – Expense Categories', description: 'Manage expense categories with monthly budgets' },
+    { name: 'Finance – Expenses',           description: 'Record and track shop expenses' },
+    { name: 'Finance – Cash Book',          description: 'Cash transactions ledger (cash, bKash, bank)' },
+    { name: 'Finance – Overview',           description: 'Finance dashboard KPIs and charts' },
+    { name: 'Finance – Ledgers',            description: 'Supplier account statements' },
+    { name: 'Finance – VAT',                description: 'VAT report derived from purchases' },
   ],
   paths: {
     ...authDocs.paths,
     ...masterdataDocs.paths,
     ...purchaseDocs.paths,
     ...inventoryDocs.paths,
+    ...financeDocs.paths,
   },
 };
 
